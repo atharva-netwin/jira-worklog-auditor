@@ -58,16 +58,24 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleTestConnection = async () => {
     setIsTestingConnection(true);
     try {
-      const response = await apiRequest('POST', '/api/test-connection', {});
+      // Check if we're in a static deployment
+      const isStatic = !window.location.origin.includes('localhost') && !window.location.origin.includes('127.0.0.1');
       
+      if (isStatic) {
+        // Simulate connection test for static deployment
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        throw new Error('This is a static demo. JIRA API is not available.');
+      }
+      
+      await apiRequest('POST', '/api/test-connection', {});
       toast({
         title: "Connection Successful",
         description: "Successfully connected to JIRA API using environment variables",
       });
     } catch (error) {
       toast({
-        title: "Connection Failed",
-        description: error instanceof Error ? error.message : "Failed to connect to JIRA",
+        title: "Demo Mode",
+        description: "This is a static demo. In a real deployment, you would configure JIRA API credentials via environment variables.",
         variant: "destructive",
       });
     } finally {

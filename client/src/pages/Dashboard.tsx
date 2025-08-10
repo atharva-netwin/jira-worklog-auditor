@@ -29,12 +29,23 @@ export default function Dashboard() {
   const handleManualRefresh = async () => {
     setIsRefreshing(true);
     try {
-      const dateParam = selectedDate ? { date: format(selectedDate, 'yyyy-MM-dd') } : {};
-      await apiRequest('POST', '/api/refresh', dateParam);
+      // Check if we're in a static deployment
+      const isStatic = !window.location.origin.includes('localhost') && !window.location.origin.includes('127.0.0.1');
+      
+      if (isStatic) {
+        // Simulate refresh for static deployment
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      } else {
+        const dateParam = selectedDate ? { date: format(selectedDate, 'yyyy-MM-dd') } : {};
+        await apiRequest('POST', '/api/refresh', dateParam);
+      }
+      
       await refetch();
       toast({
         title: "Data Refreshed",
-        description: `Worklog data has been updated for ${selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'the latest workday'}`,
+        description: isStatic 
+          ? "Demo data refreshed successfully" 
+          : `Worklog data has been updated for ${selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'the latest workday'}`,
       });
     } catch (error) {
       toast({
@@ -85,7 +96,7 @@ export default function Dashboard() {
                 <div className="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center">
                   <ChartLine className="text-white" size={16} />
                 </div>
-                <h1 className="text-xl font-semibold text-gray-900">JIRA Worklog Dashboard</h1>
+                <h1 className="text-xl font-semibold text-gray-900">JIRA Worklog Dashboard (Demo)</h1>
               </div>
             </div>
             <div className="flex items-center space-x-4">
