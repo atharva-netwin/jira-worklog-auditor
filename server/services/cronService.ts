@@ -60,7 +60,7 @@ export class CronService {
 
       for (const assignee of assignees) {
         try {
-          console.log(`Fetching tasks for assignee: ${assignee.assigneeId}`);
+          console.log(`Fetching tasks for assignee: ${assignee.assigneeId} for date: ${worklogDate}`);
           
           // Get assignee info from JIRA if not available
           if (!assignee.name || !assignee.email) {
@@ -75,13 +75,16 @@ export class CronService {
           }
 
           const tasks = await jiraService.getTasksForAssignee(assignee.assigneeId, worklogDate);
+          console.log(`Found ${tasks.length} tasks for assignee ${assignee.assigneeId}`);
           
           for (const task of tasks) {
             const worklogs = await jiraService.getWorklogsForTask(task.key, worklogDate);
+            console.log(`Found ${worklogs.length} worklogs for task ${task.key} on ${worklogDate}`);
             
             if (worklogs.length > 0) {
               const totalTimeSpent = worklogs.reduce((total, worklog) => total + worklog.timeSpentSeconds, 0);
               const hoursLogged = jiraService.formatTimeSpent(totalTimeSpent);
+              console.log(`Total time logged for task ${task.key}: ${hoursLogged}`);
 
               allWorklogEntries.push({
                 assigneeId: assignee.assigneeId,
@@ -92,6 +95,8 @@ export class CronService {
                 hoursLogged,
                 worklogDate,
               });
+            } else {
+              console.log(`No worklogs found for task ${task.key} on ${worklogDate}`);
             }
           }
         } catch (error) {

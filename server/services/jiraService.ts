@@ -72,7 +72,8 @@ export class JiraService {
 
   async getTasksForAssignee(assigneeId: string, date?: string): Promise<JiraTask[]> {
     const worklogDate = date || this.getPreviousWorkingDay();
-    const jql = `worklogDate = '${worklogDate}' AND assignee = ${assigneeId}`;
+    // Use a broader query to get all tasks assigned to the user, then filter by worklog date
+    const jql = `assignee = ${assigneeId} AND worklogDate >= '${worklogDate}' AND worklogDate <= '${worklogDate}'`;
     
     try {
       const response = await axios.get(`${this.config.jiraUrl}/rest/api/3/search`, {
@@ -83,7 +84,7 @@ export class JiraService {
         params: {
           jql,
           fields: 'summary,status,assignee',
-          maxResults: 100,
+          maxResults: 1000,
         },
         timeout: 30000,
       });
@@ -91,7 +92,28 @@ export class JiraService {
       return response.data.issues || [];
     } catch (error) {
       console.error(`Failed to fetch tasks for assignee ${assigneeId}:`, error);
-      throw new Error(`Failed to fetch JIRA tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Try alternative query if the first one fails
+      try {
+        console.log(`Trying alternative query for assignee ${assigneeId}`);
+        const alternativeJql = `assignee = ${assigneeId}`;
+        const alternativeResponse = await axios.get(`${this.config.jiraUrl}/rest/api/3/search`, {
+          headers: {
+            'Authorization': this.getAuthHeader(),
+            'Accept': 'application/json',
+          },
+          params: {
+            jql: alternativeJql,
+            fields: 'summary,status,assignee',
+            maxResults: 1000,
+          },
+          timeout: 30000,
+        });
+        
+        return alternativeResponse.data.issues || [];
+      } catch (alternativeError) {
+        console.error(`Alternative query also failed for assignee ${assigneeId}:`, alternativeError);
+        throw new Error(`Failed to fetch JIRA tasks: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
   }
 
@@ -109,8 +131,13 @@ export class JiraService {
       
       // Filter worklogs for the specific date
       return worklogs.filter((worklog: JiraWorklog) => {
-        const worklogDate = format(new Date(worklog.started), 'yyyy-MM-dd');
-        return worklogDate === date;
+        try {
+          const worklogDate = format(new Date(worklog.started), 'yyyy-MM-dd');
+          return worklogDate === date;
+        } catch (dateError) {
+          console.error(`Error parsing worklog date for task ${taskKey}:`, dateError);
+          return false;
+        }
       });
     } catch (error) {
       console.error(`Failed to fetch worklogs for task ${taskKey}:`, error);
