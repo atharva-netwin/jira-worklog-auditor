@@ -102,7 +102,7 @@ export class JiraService {
           'Authorization': this.getAuthHeader(),
           'Accept': 'application/json',
         },
-        timeout: 15000,
+        timeout: 30000,
       });
       
       const worklogs = response.data.worklogs || [];
